@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🌈 Mood Tracker with Summary and Export</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+  />
+  <style>
+    table {
+      table-layout: fixed;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 5px;
+    }
+    td {
+      aspect-ratio: 1 / 1;
+      vertical-align: middle;
+      font-size: 1.5rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      transition: box-shadow 0.2s ease;
+      user-select: none;
+    }
+    td:hover {
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+      cursor: pointer;
+    }
+    .scrollable-container {
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <header class="flex items-center justify-between p-4 bg-white shadow-md sticky top-0 z-10">
+    <button id="prev-month" aria-label="Previous month" class="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 hover:bg-gray-100">
+      <i class="fas fa-chevron-left"></i> Prev
+    </button>
+    <h1 id="month-year" class="font-semibold text-2xl text-center flex-1">May 2025</h1>
+    <button id="next-month" aria-label="Next month" class="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900 hover:bg-gray-100">
+      Next <i class="fas fa-chevron-right"></i>
+    </button>
+  </header>
+
+  <main class="flex-grow p-4 max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8">
+    <!-- Calendar container -->
+    <section class="flex-1 scrollable-container">
+      <table aria-label="Mood tracker calendar" role="grid" class="text-gray-900 min-w-[350px]">
+        <thead>
+          <tr>
+            <th class="pb-4 font-normal text-sm md:text-base">Sun</th>
+            <th class="pb-4 font-normal text-sm md:text-base">Mon</th>
+            <th class="pb-4 font-normal text-sm md:text-base">Tue</th>
+            <th class="pb-4 font-normal text-sm md:text-base">Wed</th>
+            <th class="pb-4 font-normal text-sm md:text-base">Thu</th>
+            <th class="pb-4 font-normal text-sm md:text-base">Fri</th>
+            <th class="pb-4 font-normal text-sm md:text-base">Sat</th>
+          </tr>
+        </thead>
+        <tbody id="calendar-body">
+          <!-- Calendar days inserted here by JS -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Mood selector and extra info -->
+    <section class="w-full max-w-sm bg-white rounded-md shadow-md p-6 flex flex-col items-center gap-6">
+      <div class="w-full text-center">
+        <h2 class="text-xl font-semibold mb-2">Select Mood for <span id="selected-date">---</span></h2>
+        <div class="grid grid-cols-2 gap-4 w-full text-center">
+          <button class="mood-btn rounded-md px-4 py-3 text-white font-bold text-xl" data-mood="😊" style="background-color: #34D399;">😊 Happy</button>
+          <button class="mood-btn rounded-md px-4 py-3 text-black font-bold text-xl" data-mood="😐" style="background-color: #FBBF24;">😐 Neutral</button>
+          <button class="mood-btn rounded-md px-4 py-3 text-white font-bold text-xl" data-mood="😢" style="background-color: #3B82F6;">😢 Sad</button>
+          <button class="mood-btn rounded-md px-4 py-3 text-white font-bold text-xl" data-mood="😡" style="background-color: #EF4444;">😡 Angry</button>
+          <button class="mood-btn rounded-md px-4 py-3 text-white font-bold text-xl" data-mood="😴" style="background-color: #9CA3AF;">😴 Tired</button>
+          <button class="mood-btn rounded-md px-4 py-3 text-gray-800 font-bold text-lg bg-gray-200" data-mood="none">Clear</button>
+        </div>
+      </div>
+
+      <div class="w-full">
+        <h3 class="text-lg font-semibold mb-2 text-center">Mood Summary Chart</h3>
+        <canvas id="summaryChart" width="300" height="200"></canvas>
+      </div>
+
+      <div class="w-full">
+        <h3 class="text-lg font-semibold mb-2 text-center">Weekly Mood Averages</h3>
+        <ul id="weekly-averages" class="space-y-1 text-center"></ul>
+      </div>
+
+      <div class="flex gap-3 w-full justify-center mt-4">
+        <button id="export-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold">Export JSON</button>
+        <input id="import-file" type="file" accept=".json" class="hidden" />
+        <button id="import-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold">Import JSON</button>
+      </div>
+    </section>
+  </main>
+
+<script>
+  const MOODS = {
+    "😊": { label: "Happy", color: "#34D399", score: 5 },
+    "😐": { label: "Neutral", color: "#FBBF24", score: 3 },
+    "😢": { label: "Sad", color: "#3B82F6", score: 2 },
+    "😡": { label: "Angry", color: "#EF4444", score: 1 },
+    "😴": { label: "Tired", color: "#9CA3AF", score: 2 },
+  };
+
+  let currentYear = null;
+  let currentMonth = null;
+  let selectedDate = null;
+
+  const calendarBody = document.getElementById('calendar-body');
+  const monthYearLabel = document.getElementById('month-year');
+  const selectedDateLabel = document.getElementById('selected-date');
+
+  const prevMonthBtn = document.getElementById('prev-month');
+  const nextMonthBtn = document.getElementById('next-month');
+  const moodButtons = document.querySelectorAll('.mood-btn');
+
+  const STORAGE_KEY = 'mood-tracker';
+  let summaryChart = null;
+
+  function getMoodData() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  }
+
+  function saveMoodData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function formatDate(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  function generateCalendar(year, month) {
+    calendarBody.innerHTML = '';
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const firstWeekDay = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+
+    monthYearLabel.textContent = firstDay.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    const moodData = getMoodData();
+
+    let dayCounter = 1;
+    for (let week = 0; week < 6; week++) {
+      const tr = document.createElement('tr');
+
+      for (let day = 0; day < 7; day++) {
+        const td = document.createElement('td');
+        td.className = 'pt-2 cursor-pointer select-none';
+
+        if (week === 0 && day < firstWeekDay) {
+          td.textContent = '';
+        } else if (dayCounter > daysInMonth) {
+          td.textContent = '';
+        } else {
+          const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(dayCounter).padStart(2,'0')}`;
+          td.textContent = dayCounter;
+
+          if (moodData[dateStr] && moodData[dateStr] !== 'none') {
+            td.style.backgroundColor = MOODS[moodData[dateStr]].color;
+            td.style.color = moodData[dateStr] === '😐' ? 'black' : 'white';
+            td.classList.add('rounded-md');
+          } else {
+            td.style.backgroundColor = 'transparent';
+            td.style.color = 'inherit';
+          }
+
+          if (selectedDate === dateStr) {
+            td.classList.add('ring-4', 'ring-indigo-500');
+          }
+
+          td.addEventListener('click', () => {
+            selectedDate = dateStr;
+            updateSelectedDate();
+            updateSummary();
+          });
+
+          dayCounter++;
+        }
+        tr.appendChild(td);
+      }
+      calendarBody.appendChild(tr);
+      if (dayCounter > daysInMonth) break;
+    }
+  }
+
+  function updateSelectedDate() {
+    selectedDateLabel.textContent = selectedDate || '---';
+  }
+
+  moodButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!selectedDate) {
+        alert('Please select a date on the calendar first.');
+        return;
+      }
+      const mood = btn.dataset.mood;
+      let data = getMoodData();
+
+      if (mood === 'none') {
+        delete data[selectedDate];
+      } else {
+        data[selectedDate] = mood;
+        showMoodNotification(mood); // ✅ Trigger notification
+      }
+
+      saveMoodData(data);
+      generateCalendar(currentYear, currentMonth);
+      updateSummary();
+    });
+  });
+
+  prevMonthBtn.addEventListener('click', () => {
+    if (currentMonth === 0) {
+      currentYear--;
+      currentMonth = 11;
+    } else {
+      currentMonth--;
+    }
+    generateCalendar(currentYear, currentMonth);
+  });
+
+  nextMonthBtn.addEventListener('click', () => {
+    if (currentMonth === 11) {
+      currentYear++;
+      currentMonth = 0;
+    } else {
+      currentMonth++;
+    }
+    generateCalendar(currentYear, currentMonth);
+  });
+
+  function updateSummary() {
+    const data = getMoodData();
+    const moodCounts = {};
+    Object.keys(MOODS).forEach(mood => (moodCounts[mood] = 0));
+
+    Object.entries(data).forEach(([dateStr, mood]) => {
+      const d = new Date(dateStr);
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+        if (mood !== 'none' && moodCounts[mood] !== undefined) {
+          moodCounts[mood]++;
+        }
+      }
+    });
+
+    const labels = Object.values(MOODS).map(m => m.label);
+    const counts = Object.keys(MOODS).map(mood => moodCounts[mood]);
+    const colors = Object.values(MOODS).map(m => m.color);
+
+    if (summaryChart) summaryChart.destroy();
+
+    const ctx = document.getElementById('summaryChart').getContext('2d');
+    summaryChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Mood Count',
+          data: counts,
+          backgroundColor: colors,
+          borderRadius: 5,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            precision: 0,
+            ticks: { stepSize: 1 }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.y} day(s)`
+            }
+          }
+        }
+      }
+    });
+
+    updateWeeklyAverages();
+  }
+
+  function updateWeeklyAverages() {
+    const moodData = getMoodData();
+    const weeks = [];
+    const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    for (let i = 1; i <= lastDay; i++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      weeks.push({ dateStr, mood: moodData[dateStr] || 'none' });
+    }
+
+    let weeklyMoods = [];
+    let currentWeek = [];
+
+    weeks.forEach(({ dateStr, mood }, idx) => {
+      currentWeek.push(mood);
+      const dayOfWeek = new Date(dateStr).getDay();
+      if (dayOfWeek === 6 || idx === weeks.length - 1) {
+        weeklyMoods.push(currentWeek);
+        currentWeek = [];
+      }
+    });
+
+    const weekColors = weeklyMoods.map(week => {
+      const moodCount = { happy: 0, neutral: 0, sad: 0 };
+      week.forEach(m => {
+        if (m in moodCount) moodCount[m]++;
+      });
+
+      const maxMood = Object.keys(moodCount).reduce((a, b) => moodCount[a] >= moodCount[b] ? a : b);
+      return moodColor[maxMood] || '#ccc';
+    });
+
+    document.querySelectorAll('.week-box').forEach((box, index) => {
+      box.style.backgroundColor = weekColors[index] || '#eee';
+    });
+}
+
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const data = getMoodData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mood-data.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+
+  document.getElementById('import-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const importedData = JSON.parse(reader.result);
+        if (typeof importedData === 'object' && importedData !== null) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(importedData));
+          alert('Mood data imported successfully!');
+          generateCalendar(currentYear, currentMonth);
+          updateSummary();
+        } else {
+          alert('Invalid JSON data.');
+        }
+      } catch {
+        alert('Error parsing JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // Init
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth();
+  selectedDate = formatDate(now);
+
+  updateSelectedDate();
+  generateCalendar(currentYear, currentMonth);
+  updateSummary();
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  });
+
+  // ✅ Mood Notification Function
+  function showMoodNotification(mood) {
+    if (Notification.permission === "granted") {
+      const moodInfo = MOODS[mood];
+      new Notification(`Mood Set: ${moodInfo.label}`, {
+        body: `You're feeling ${moodInfo.label.toLowerCase()} today.`,
+        icon: 'https://cdn-icons-png.flaticon.com/512/833/833472.png' // Optional icon
+      });
+    }
+  }
+</script>
+
+
+
+</body>
+</html>

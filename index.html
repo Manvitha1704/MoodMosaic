@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>MoodMosaic Insights</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+   body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+ </head>
+ <body class="bg-[#fff7d1] min-h-screen flex flex-col">
+  <!-- Top bar with window controls and arrows -->
+  <div class="flex justify-between items-center px-2 py-1 text-gray-400 text-xs select-none">
+   <div class="flex space-x-3 items-center">
+    <button aria-label="Back" class="focus:outline-none">
+     <i class="fas fa-chevron-left"></i>
+    </button>
+    <button aria-label="Forward" class="focus:outline-none">
+     <i class="fas fa-chevron-right"></i>
+    </button>
+   </div>
+  </div>
+
+  <!-- Main content with background image and text overlay -->
+  <div class="relative flex-grow">
+   <img
+     src="https://storage.googleapis.com/a1aa/image/8ddb6b67-7482-405f-f683-bc8f542bab03.jpg"
+     alt="Close-up of hands holding a smartphone showing colorful mood tracking app interface"
+     class="w-full h-full object-cover"
+     width="600" height="400"
+   />
+   <div class="absolute top-1/4 left-6 max-w-xs sm:max-w-md">
+    <h1 class="text-white font-extrabold text-3xl sm:text-4xl leading-tight">
+     Mood
+     <span class="text-[#b9b02f]">Mosaic</span>
+    </h1>
+    <p class="text-white text-[9px] sm:text-xs font-semibold mt-1">
+     Track, Reflect, Improve, Repeat
+    </p>
+    <a href="Main.html">
+      <button aria-label="Try It Out" class="mt-4 px-5 py-1 border border-white rounded-full text-white text-[9px] sm:text-xs font-normal hover:bg-white hover:text-[#b9b02f] transition">
+        Try It Out
+      </button>
+    </a>
+   </div>
+  </div>
+ </body>
+</html>
